@@ -1,0 +1,9 @@
+run:
+	APP_ENV=dev fastapi dev main.py
+
+run-qa:
+	APP_ENV=qa fastapi dev main.py
+
+run-prod:
+	APP_ENV=prod fastapi run main.py
+

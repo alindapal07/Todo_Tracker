@@ -1,4 +1,9 @@
+import os
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+environment = os.getenv("APP_ENV", "dev")
 
 
 class Settings(BaseSettings):
@@ -7,10 +12,9 @@ class Settings(BaseSettings):
     DATABASE_URL: str
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=f".env.{environment}",
         env_file_encoding="utf-8",
         case_sensitive=True,
-        hide_input_in_errors=True,
     )
 
 
