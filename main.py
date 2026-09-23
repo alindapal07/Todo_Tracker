@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from api.todo_route import router as todo_router
 from db.session import engine
 from db.base import Base
-
+from api.user_route import router as user_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -23,7 +23,7 @@ app = FastAPI(
 )
 
 app.include_router(todo_router)
-
+app.include_router(user_router)
 
 @app.get("/")
 def root():
