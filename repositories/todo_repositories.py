@@ -1,5 +1,4 @@
 from typing import Any
-from uuid import UUID
 
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,40 +15,52 @@ class TodoRepository:
         self.db.add(todo)
         await self.db.commit()
         await self.db.refresh(todo)
-
         return todo
 
-
-    async def get_all(self) -> list[Todo]:
-        result = await self.db.execute(select(Todo).order_by(Todo.id))
+    async def get_all(self, user_id: str | None = None) -> list[Todo]:
+        statement = select(Todo)
+        if user_id is not None:
+            statement = statement.where(Todo.user_id == user_id)
+        result = await self.db.execute(statement.order_by(Todo.id))
         return list(result.scalars().all())
 
-    async def get_by_id(self, todo_id: UUID) -> Todo | None:
-        return await self.db.get(Todo, todo_id)
+    async def get_by_id(self, todo_id: str) -> Todo | None:
+        statement = select(Todo).where(Todo.id == str(todo_id))
+        result = await self.db.execute(statement)
+        return result.scalar_one_or_none()
 
-    async def get_by_title(self, title: str) -> Todo | None:
-        result = await self.db.execute(
-            select(Todo).where(func.lower(Todo.title) == title.lower())
-        )
+    async def get_by_title(self, title: str, user_id: str | None = None) -> Todo | None:
+        statement = select(Todo).where(func.lower(Todo.title) == title.lower())
+        if user_id is not None:
+            statement = statement.where(Todo.user_id == user_id)
+        result = await self.db.execute(statement)
         return result.scalars().first()
 
-    async def get_by_category(self, category: TodoCategory) -> list[Todo]:
-        result = await self.db.execute(
-            select(Todo).where(Todo.category == category).order_by(Todo.id)
-        )
+    async def get_by_category(
+        self,
+        category: TodoCategory,
+        user_id: str | None = None,
+    ) -> list[Todo]:
+        statement = select(Todo).where(Todo.category == category)
+        if user_id is not None:
+            statement = statement.where(Todo.user_id == user_id)
+        result = await self.db.execute(statement.order_by(Todo.id))
         return list(result.scalars().all())
 
     async def list(
         self,
         *,
+        user_id: str | None = None,
         category: TodoCategory | None = None,
         completed: bool | None = None,
         search: str | None = None,
         page: int = 1,
         limit: int = 10,
     ) -> tuple[list[Todo], int]:
-
         filters = []
+
+        if user_id is not None:
+            filters.append(Todo.user_id == user_id)
 
         if category is not None:
             filters.append(Todo.category == category)
@@ -83,14 +94,16 @@ class TodoRepository:
 
         return list(result.scalars().all()), int(total or 0)
 
-    async def count_by_category(self, category: TodoCategory) -> int:
-        total = await self.db.scalar(
-            select(func.count())
-            .select_from(Todo)
-            .where(Todo.category == category)
-        )
+    async def count_by_category(
+        self,
+        category: TodoCategory,
+        user_id: str | None = None,
+    ) -> int:
+        statement = select(func.count()).select_from(Todo).where(Todo.category == category)
+        if user_id is not None:
+            statement = statement.where(Todo.user_id == user_id)
+        total = await self.db.scalar(statement)
         return int(total or 0)
-
 
     async def update(self, todo: Todo, changes: dict[str, Any]) -> Todo:
         for field, value in changes.items():
@@ -98,18 +111,21 @@ class TodoRepository:
 
         await self.db.commit()
         await self.db.refresh(todo)
-
         return todo
-
 
     async def delete(self, todo: Todo) -> None:
         await self.db.delete(todo)
         await self.db.commit()
 
-    async def delete_by_category(self, category: TodoCategory) -> int:
-        result = await self.db.execute(
-            delete(Todo).where(Todo.category == category)
-        )
+    async def delete_by_category(
+        self,
+        category: TodoCategory,
+        user_id: str | None = None,
+    ) -> int:
+        statement = delete(Todo).where(Todo.category == category)
+        if user_id is not None:
+            statement = statement.where(Todo.user_id == user_id)
+        result = await self.db.execute(statement)
         await self.db.commit()
 
         return int(result.rowcount or 0)

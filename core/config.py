@@ -11,7 +11,6 @@ ENV_FILE = ".env"
 
 
 class Settings(BaseSettings):
-
     APP_NAME: str = "Todo_App"
     ENVIRONMENT: str = environment
 
@@ -19,7 +18,12 @@ class Settings(BaseSettings):
 
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     JWT_ACCESS_TOKEN_EXPIRES_TIME: int = 30
+
+    @property
+    def token_expire_minutes(self) -> int:
+        return self.ACCESS_TOKEN_EXPIRE_MINUTES or self.JWT_ACCESS_TOKEN_EXPIRES_TIME or 30
 
     model_config = SettingsConfigDict(
         env_file=ENV_FILE,

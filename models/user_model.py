@@ -1,9 +1,10 @@
 import uuid
 from datetime import datetime
 
-from db.base import Base
-from sqlalchemy import String, DateTime, func
+from sqlalchemy import Boolean, DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column
+
+from db.base import Base
 
 
 class User(Base):
@@ -12,50 +13,55 @@ class User(Base):
     id: Mapped[str] = mapped_column(
         String,
         primary_key=True,
-        default=lambda: str(uuid.uuid4())
+        default=lambda: str(uuid.uuid4()),
     )
 
-    name: Mapped[str] = mapped_column(
+    username: Mapped[str] = mapped_column(
         String(50),
-        nullable=False
+        unique=True,
+        nullable=False,
+    )
+
+    name: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
     )
 
     email: Mapped[str] = mapped_column(
         String(255),
         unique=True,
-        nullable=False
+        nullable=False,
     )
 
-    password: Mapped[str] = mapped_column(
+    password_hash: Mapped[str] = mapped_column(
+        "password",
         String(255),
-        nullable=False
+        nullable=False,
     )
 
-    @property
-    def username(self) -> str:
-        return self.name
-
-    @username.setter
-    def username(self, value: str) -> None:
-        self.name = value
-
-    @property
-    def password_hash(self) -> str:
-        return self.password
-
-    @password_hash.setter
-    def password_hash(self, value: str) -> None:
-        self.password = value
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        nullable=False,
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
-        nullable=False
+        nullable=False,
     )
 
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),
-        nullable=False
+        nullable=False,
     )
+
+    @property
+    def password(self) -> str:
+        return self.password_hash
+
+    @password.setter
+    def password(self, value: str) -> None:
+        self.password_hash = value

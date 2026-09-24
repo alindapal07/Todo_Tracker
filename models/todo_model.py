@@ -1,14 +1,11 @@
 import uuid
 from datetime import date
 
-from sqlalchemy import JSON, Boolean, Date, Integer, String
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy import JSON, Boolean, Date, ForeignKey, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column
 
+from db.base import Base
 from schemas.todo_schema import TodoCategory, TodoPriority, TodoStatus
-
-
-class Base(DeclarativeBase):
-    pass
 
 
 class Todo(Base):
@@ -18,6 +15,13 @@ class Todo(Base):
         String,
         primary_key=True,
         default=lambda: str(uuid.uuid4()),
+    )
+
+    user_id: Mapped[str | None] = mapped_column(
+        String,
+        ForeignKey("user-table.id"),
+        nullable=True,
+        index=True,
     )
 
     title: Mapped[str] = mapped_column(String, nullable=False)

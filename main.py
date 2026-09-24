@@ -2,29 +2,32 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from api.auth_route import router as auth_router
 from api.todo_route import router as todo_router
+from db.init_db import init_db
 from db.session import engine
-from db.base import Base
-from api.user_route import router as user_router
+from middleware.request_timing import RequestTimingMiddleware
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
+    await init_db(engine)
     yield
 
 
 app = FastAPI(
     title="Todo API",
-    description="Basic project on todo app",
+    description="Clean, production-ready Todo API with JWT Authentication and Authorization",
     version="1.0.0",
     lifespan=lifespan,
 )
 
-app.include_router(todo_router)
-app.include_router(user_router)
+app.add_middleware(RequestTimingMiddleware)
 
-@app.get("/")
+app.include_router(auth_router)
+app.include_router(todo_router)
+
+
+@app.get("/", tags=["Health"])
 def root():
     return {"message": "Todo API is running"}

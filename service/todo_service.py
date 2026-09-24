@@ -1,5 +1,4 @@
 from typing import Any
-from uuid import UUID
 
 from fastapi import HTTPException, status
 
@@ -9,7 +8,6 @@ from schemas.todo_schema import TodoCategory, TodoIn, TodoUpdate
 
 
 class TodoService:
-
     def __init__(self, repository: TodoRepository):
         self.repository = repository
 
@@ -23,28 +21,41 @@ class TodoService:
                 detail=f"Category '{category}' does not exist",
             )
 
-    async def _get_or_404(self, todo_id: UUID) -> Todo:
+    async def _get_or_404(self, todo_id: str, user_id: str) -> Todo:
         todo = await self.repository.get_by_id(todo_id)
         if todo is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Todo not found",
             )
+
+        if todo.user_id is not None and todo.user_id != str(user_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to access this todo",
+            )
+
         return todo
-
-
 
     @staticmethod
     def list_categories() -> list[str]:
         return [category.value for category in TodoCategory]
 
-    async def get_todos_by_category(self, category: Any) -> list[Todo]:
+    async def get_todos_by_category(
+        self,
+        category: Any,
+        user_id: str,
+    ) -> list[Todo]:
         valid = self._validate_category(category)
-        return await self.repository.get_by_category(valid)
+        return await self.repository.get_by_category(valid, user_id=user_id)
 
-    async def delete_todos_by_category(self, category: Any) -> dict[str, Any]:
+    async def delete_todos_by_category(
+        self,
+        category: Any,
+        user_id: str,
+    ) -> dict[str, Any]:
         valid = self._validate_category(category)
-        deleted_count = await self.repository.delete_by_category(valid)
+        deleted_count = await self.repository.delete_by_category(valid, user_id=user_id)
 
         return {
             "message": "Todos deleted successfully",
@@ -52,12 +63,10 @@ class TodoService:
             "deleted_count": deleted_count,
         }
 
-
-
-    async def create_todo(self, payload: TodoIn) -> Todo:
+    async def create_todo(self, payload: TodoIn, user_id: str) -> Todo:
         category = self._validate_category(payload.category)
 
-        existing = await self.repository.get_by_title(payload.title)
+        existing = await self.repository.get_by_title(payload.title, user_id=user_id)
         if existing is not None:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -66,19 +75,20 @@ class TodoService:
 
         data = payload.model_dump(exclude_unset=True)
         data["category"] = category
+        data["user_id"] = str(user_id)
 
         return await self.repository.create(Todo(**data))
 
-    async def get_all_todos(self) -> list[Todo]:
-        return await self.repository.get_all()
+    async def get_all_todos(self, user_id: str) -> list[Todo]:
+        return await self.repository.get_all(user_id=user_id)
 
-    async def get_todo(self, todo_id: UUID) -> Todo:
-        return await self._get_or_404(todo_id)
-
+    async def get_todo(self, todo_id: str, user_id: str) -> Todo:
+        return await self._get_or_404(todo_id, user_id)
 
     async def list_todos(
         self,
         *,
+        user_id: str,
         category: Any | None = None,
         completed: bool | None = None,
         search: str | None = None,
@@ -90,6 +100,7 @@ class TodoService:
         )
 
         items, total = await self.repository.list(
+            user_id=user_id,
             category=valid_category,
             completed=completed,
             search=search,
@@ -105,8 +116,13 @@ class TodoService:
             "pages": (total + limit - 1) // limit if total else 0,
         }
 
-    async def update_todo(self, todo_id: UUID, payload: TodoUpdate) -> Todo:
-        todo = await self._get_or_404(todo_id)
+    async def update_todo(
+        self,
+        todo_id: str,
+        payload: TodoUpdate,
+        user_id: str,
+    ) -> Todo:
+        todo = await self._get_or_404(todo_id, user_id)
 
         changes = payload.model_dump(exclude_unset=True)
         if not changes:
@@ -120,8 +136,8 @@ class TodoService:
 
         new_title = changes.get("title")
         if new_title and new_title.lower() != todo.title.lower():
-            clash = await self.repository.get_by_title(new_title)
-            if clash is not None:
+            clash = await self.repository.get_by_title(new_title, user_id=user_id)
+            if clash is not None and clash.id != todo.id:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
                     detail="A Todo with this title already exists",
@@ -129,8 +145,8 @@ class TodoService:
 
         return await self.repository.update(todo, changes)
 
-    async def delete_todo(self, todo_id: UUID) -> dict[str, Any]:
-        todo = await self._get_or_404(todo_id)
+    async def delete_todo(self, todo_id: str, user_id: str) -> dict[str, Any]:
+        todo = await self._get_or_404(todo_id, user_id)
         await self.repository.delete(todo)
 
         return {
