@@ -30,7 +30,7 @@ class userUpdate(BaseModel):
     )
 
     email: EmailStr | None = None
-
+ 
     password: str | None = Field(
         default=None,
         min_length=8,
@@ -48,3 +48,8 @@ class userResponse(BaseModel):
     model_config = ConfigDict(
         from_attributes=True
     )
+    
+class AuthResponse(BaseModel):
+    user: userResponse
+    access_token: str
+    token_type: str = "bearer"

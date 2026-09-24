@@ -4,6 +4,7 @@ from schemas.user_schema import (
     userBase,
     userIn,
     userResponse,
+    AuthResponse
 )
 
 from dependencies.user_dependencies import userServiceDependency
@@ -17,7 +18,7 @@ router = APIRouter(
 
 @router.post(
     "/user/register",
-    response_model=userResponse,
+    response_model=AuthResponse,
     status_code=status.HTTP_201_CREATED
 )
 async def register_user(

@@ -21,16 +21,29 @@ class userService:
         existing=await self.repository.get_user_by_email(user_data.email)
         if existing:
             raise ValueError("User with this email address already exist!")
+        
+         # Hash password
         hashed_password = self.security.hashed_password(
             user_data.password
         )
+         
+        # created user
         user = User(
             name=user_data.name,
             email=user_data.email,
             password=hashed_password,
         )
-        return await self.repository.create(user)
-    
+        # save user
+        created_user=await self.repository.create(user)
+        
+        # generate access token
+        access_token= Security.create_access_Token(created_user.id)
+        
+        return {
+        "user": created_user,
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
 
     
     
@@ -47,4 +60,9 @@ class userService:
         if not is_valid:
             raise ValueError("Invalid email or password ! ")
         
-        return existing
+        access_token= Security.create_access_Token(str(existing.id))
+        return {
+        "user": existing,
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
