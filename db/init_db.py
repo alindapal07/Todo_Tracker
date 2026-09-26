@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from db.base import Base
 # Import all models so metadata knows about them
+import models.refreshToken_model  # noqa: F401
 import models.todo_model  # noqa: F401
 import models.user_model  # noqa: F401
 
@@ -44,3 +45,10 @@ async def init_db(engine: AsyncEngine) -> None:
             )
         except Exception as exc:
             logger.warning("todos table column migration note: %s", exc)
+
+        try:
+            await connection.execute(
+                text('ALTER TABLE refresh_tokens ADD COLUMN IF NOT EXISTS replaced_by UUID;')
+            )
+        except Exception as exc:
+            logger.warning("refresh_tokens table column migration note: %s", exc)

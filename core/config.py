@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     JWT_ACCESS_TOKEN_EXPIRES_TIME: int = 30
+    REFRESH_TOKEN_EXPIRY_TIME: int = 15
+    REFRESH_COOKIE_NAME: str = "refresh_token"
+    REFRESH_TOKEN_MAX_AGE: int = 14 * 24 * 60 * 60
 
     @property
     def token_expire_minutes(self) -> int:
