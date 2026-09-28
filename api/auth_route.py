@@ -13,6 +13,10 @@ from schemas.auth_schema import (
 )
 
 
+from schemas.common_schema import SuccessResponse
+from utils.responses import success_response
+
+
 router = APIRouter(
     prefix="/auth",
     tags=["Authentication"],
@@ -28,7 +32,7 @@ def get_client_ip(request: Request) -> str | None:
 
 @router.post(
     "/register",
-    response_model=UserResponse,
+    response_model=SuccessResponse[UserResponse],
     status_code=status.HTTP_201_CREATED,
     summary="Register a new user",
 )
@@ -36,25 +40,16 @@ async def register(
     user_data: UserRegister,
     user_service: userServiceDependency,
 ):
-    try:
-        created_user = await user_service.register_user(user_data)
-        return created_user
-    except ValueError as error:
-        error_message = str(error)
-        if "already exists" in error_message:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=error_message,
-            )
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=error_message,
-        )
+    created_user = await user_service.register_user(user_data)
+    return success_response(
+        data=created_user,
+        message="User registered successfully",
+    )
 
 
 @router.post(
     "/login",
-    response_model=Token,
+    response_model=SuccessResponse[Token],
     summary="Login and obtain JWT access token",
 )
 async def login(
@@ -74,7 +69,10 @@ async def login(
         )
 
         set_refresh_token_cookie(response, raw_refresh_token)
-        return token_payload
+        return success_response(
+            data=Token(**token_payload),
+            message="Login successful",
+        )
     except ValueError as error:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -85,7 +83,7 @@ async def login(
 
 @router.post(
     "/refresh",
-    response_model=Token,
+    response_model=SuccessResponse[Token],
     summary="Rotate refresh token and issue new access token",
 )
 async def refresh(
@@ -120,10 +118,13 @@ async def refresh(
             user_agent=user_agent,
         )
         set_refresh_token_cookie(response, new_raw_token)
-        return Token(
-            access_token=token_payload["access_token"],
-            refresh_token=new_raw_token,
-            token_type="bearer",
+        return success_response(
+            data=Token(
+                access_token=token_payload["access_token"],
+                refresh_token=new_raw_token,
+                token_type="bearer",
+            ),
+            message="Token refreshed successfully",
         )
     except ValueError as error:
         clear_refresh_token_cookie(response)
@@ -136,7 +137,7 @@ async def refresh(
 
 @router.post(
     "/logout",
-    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=SuccessResponse[dict[str, str]],
     summary="Logout and revoke active refresh token",
 )
 async def logout(
@@ -161,16 +162,20 @@ async def logout(
             pass
 
     clear_refresh_token_cookie(response)
-    return None
+    return success_response(message="Logged out successfully")
 
 
 @router.get(
     "/me",
-    response_model=UserResponse,
+    response_model=SuccessResponse[UserResponse],
     summary="Get current authenticated user profile",
 )
 async def get_current_user_profile(
     current_user: CurrentUser,
 ):
-    return current_user
+    return success_response(
+        data=current_user,
+        message="User profile retrieved successfully",
+    )
+
 

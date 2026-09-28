@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from enum import Enum
 from datetime import date
 
@@ -82,3 +82,5 @@ class TodoResponse(BaseModel):
     tags: list[str]
     is_favorite: bool
     estimated_minutes: int | None
+
+    model_config = ConfigDict(from_attributes=True)

@@ -6,9 +6,11 @@ from core.security import (
     revoke_refresh_token,
     verify_password,
 )
+from errors.exceptions import UserAlreadyExists
 from models.user_model import User
 from repositories.user_repositories import UserRepository
 from schemas.auth_schema import UserLogin, UserRegister
+
 
 
 class userService:
@@ -27,11 +29,12 @@ class userService:
     async def register_user(self, user_data: UserRegister) -> User:
         existing_username = await self.repository.get_user_by_username(user_data.username)
         if existing_username:
-            raise ValueError("Username already exists")
+            raise UserAlreadyExists("Username already exists")
 
         existing_email = await self.repository.get_user_by_email(user_data.email)
         if existing_email:
-            raise ValueError("Email already exists")
+            raise UserAlreadyExists("Email already exists")
+
 
         hashed_password = hash_password(user_data.password)
         display_name = user_data.name or user_data.username

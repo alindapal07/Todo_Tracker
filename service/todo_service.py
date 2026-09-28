@@ -2,6 +2,7 @@ from typing import Any
 
 from fastapi import HTTPException, status
 
+from errors.exceptions import CategoryNotFound, TodoAlreadyExists, TodoNotFound
 from models.todo_model import Todo
 from repositories.todo_repositories import TodoRepository
 from schemas.todo_schema import TodoCategory, TodoIn, TodoUpdate
@@ -16,18 +17,13 @@ class TodoService:
         try:
             return TodoCategory(category)
         except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Category '{category}' does not exist",
-            )
+            raise CategoryNotFound(f"Category '{category}' does not exist")
 
     async def _get_or_404(self, todo_id: str, user_id: str) -> Todo:
         todo = await self.repository.get_by_id(todo_id)
         if todo is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Todo not found",
-            )
+            raise TodoNotFound()
+
 
         if todo.user_id is not None and todo.user_id != str(user_id):
             raise HTTPException(
@@ -58,20 +54,18 @@ class TodoService:
         deleted_count = await self.repository.delete_by_category(valid, user_id=user_id)
 
         return {
-            "message": "Todos deleted successfully",
             "category": valid.value,
             "deleted_count": deleted_count,
         }
+
 
     async def create_todo(self, payload: TodoIn, user_id: str) -> Todo:
         category = self._validate_category(payload.category)
 
         existing = await self.repository.get_by_title(payload.title, user_id=user_id)
         if existing is not None:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="A Todo with this title already exists",
-            )
+            raise TodoAlreadyExists("A Todo with this title already exists")
+
 
         data = payload.model_dump(exclude_unset=True)
         data["category"] = category
@@ -138,10 +132,8 @@ class TodoService:
         if new_title and new_title.lower() != todo.title.lower():
             clash = await self.repository.get_by_title(new_title, user_id=user_id)
             if clash is not None and clash.id != todo.id:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="A Todo with this title already exists",
-                )
+                raise TodoAlreadyExists("A Todo with this title already exists")
+
 
         return await self.repository.update(todo, changes)
 
@@ -150,6 +142,5 @@ class TodoService:
         await self.repository.delete(todo)
 
         return {
-            "message": "Todo deleted successfully",
             "todo_id": str(todo.id),
         }
