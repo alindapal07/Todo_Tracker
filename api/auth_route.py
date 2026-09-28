@@ -5,6 +5,7 @@ from core.cookie import clear_refresh_token_cookie, set_refresh_token_cookie
 from dependencies.auth_dependency import CurrentUser
 from dependencies.user_dependencies import userServiceDependency
 from schemas.auth_schema import (
+    PasswordChangeRequest,
     RefreshTokenRequest,
     Token,
     UserLogin,
@@ -177,5 +178,24 @@ async def get_current_user_profile(
         data=current_user,
         message="User profile retrieved successfully",
     )
+
+
+@router.post(
+    "/change-password",
+    response_model=SuccessResponse[dict[str, str]],
+    summary="Change user password and invalidate previous sessions",
+)
+async def change_password(
+    response: Response,
+    password_data: PasswordChangeRequest,
+    current_user: CurrentUser,
+    user_service: userServiceDependency,
+):
+    await user_service.change_password(
+        user=current_user,
+        data=password_data,
+    )
+    clear_refresh_token_cookie(response)
+    return success_response(message="Password changed successfully")
 
 

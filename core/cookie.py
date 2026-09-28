@@ -29,4 +29,4 @@ def clear_refresh_token_cookie(response: Response, secure: bool | None = None) -
         httponly=True,
         secure=is_secure,
         samesite="lax",
-    )
+    )

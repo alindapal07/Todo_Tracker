@@ -1,15 +1,18 @@
+from datetime import UTC, datetime
+
 from core.security import (
     create_access_token,
     create_refresh_token,
     hash_password,
     refresh_session,
+    revoke_all_user_refresh_tokens,
     revoke_refresh_token,
     verify_password,
 )
-from errors.exceptions import UserAlreadyExists
+from errors.exceptions import InvalidCurrentPassword, UserAlreadyExists
 from models.user_model import User
 from repositories.user_repositories import UserRepository
-from schemas.auth_schema import UserLogin, UserRegister
+from schemas.auth_schema import PasswordChangeRequest, UserLogin, UserRegister
 
 
 
@@ -113,3 +116,27 @@ class userService:
 
     async def revoke_token(self, raw_refresh_token: str) -> None:
         await self.revoke_refresh_token(raw_refresh_token)
+
+    async def change_password(
+        self,
+        user: User,
+        data: PasswordChangeRequest,
+    ) -> User:
+        if not verify_password(data.current_password, user.password_hash):
+            raise InvalidCurrentPassword("Current password is incorrect")
+
+        try:
+            user.password_hash = hash_password(data.new_password)
+            user.password_changed_at = datetime.now(UTC)
+
+            await revoke_all_user_refresh_tokens(
+                db=self.repository.db,
+                user_id=user.id,
+            )
+
+            await self.repository.db.commit()
+            await self.repository.db.refresh(user)
+            return user
+        except Exception:
+            await self.repository.db.rollback()
+            raise

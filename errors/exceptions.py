@@ -43,4 +43,15 @@ class CategoryNotFound(AppError):
 
 class CategoryAlreadyExists(AppError):
     code = "CATEGORY_ALREADY_EXISTS"
-    message = "Category already exists"
+    message = "Category already exists"
+
+
+class TokenInvalidated(AppError):
+    code = "TOKEN_INVALIDATED"
+    message = "Not authenticated: password changed"
+
+
+class InvalidCurrentPassword(AppError):
+    code = "INVALID_CURRENT_PASSWORD"
+    message = "Current password is incorrect"
+

@@ -20,12 +20,12 @@ password_hasher = PasswordHash.recommended()
 # =============================================================================
 
 def hash_password(password: str) -> str:
-    """Hash a plain text password using argon2id."""
+   
     return password_hasher.hash(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a plain text password against a stored hash."""
+    
     try:
         return password_hasher.verify(plain_password, hashed_password)
     except Exception:
@@ -42,7 +42,7 @@ def create_access_token(
     data: dict[str, Any] | None = None,
     expires_delta: timedelta | None = None,
 ) -> str:
-    """Generate a signed JWT access token."""
+   
     payload = data.copy() if data else {}
     if user_id is not None:
         payload["sub"] = str(user_id)
@@ -82,7 +82,6 @@ def decode_access_token(token: str) -> dict[str, Any]:
 # =============================================================================
 
 def hash_refresh_token(raw_token: str) -> str:
-    """Compute SHA-256 hash of raw token for storage and lookups."""
     return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
 
 
@@ -94,10 +93,7 @@ async def create_refresh_token(
     family_id: uuid.UUID | None = None,
     expire_days: int | None = None,
 ) -> tuple[str, RefreshToken]:
-    """
-    Generates a secure random refresh token, stores its hash in the database,
-    and returns both the raw token and the ORM record.
-    """
+   
     if expire_days is None:
         expire_days = getattr(settings, "REFRESH_TOKEN_EXPIRY_TIME", 15)
 
@@ -130,10 +126,8 @@ async def refresh_session(
     ip_address: str | None = None,
     user_agent: str | None = None,
 ) -> tuple[dict[str, str], str]:
-    """
-    Validates the refresh token, performs rotation, checks for token reuse attacks,
-    and returns a new access token and rotated refresh token.
-    """
+   
+   
     incoming_hash = hash_refresh_token(raw_refresh_token)
 
     statement = select(RefreshToken).where(RefreshToken.token_hash == incoming_hash)
@@ -195,7 +189,8 @@ async def refresh_session(
 
 
 async def revoke_refresh_token(db: AsyncSession, raw_refresh_token: str) -> None:
-    """Revokes a refresh token on logout."""
+  
+  
     incoming_hash = hash_refresh_token(raw_refresh_token)
     statement = (
         update(RefreshToken)
@@ -204,3 +199,17 @@ async def revoke_refresh_token(db: AsyncSession, raw_refresh_token: str) -> None
     )
     await db.execute(statement)
     await db.commit()
+
+
+async def revoke_all_user_refresh_tokens(db: AsyncSession, user_id: str | uuid.UUID) -> None:
+   
+   
+    statement = (
+        update(RefreshToken)
+        .where(
+            RefreshToken.user_id == str(user_id),
+            RefreshToken.is_revoked.is_(False),
+        )
+        .values(is_revoked=True)
+    )
+    await db.execute(statement)

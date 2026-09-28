@@ -62,5 +62,19 @@ class UserResponse(BaseModel):
     is_active: bool = True
     created_at: datetime
     updated_at: datetime
+    password_changed_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str = Field(
+        ...,
+        description="Current user password",
+    )
+    new_password: str = Field(
+        ...,
+        min_length=8,
+        max_length=100,
+        description="New password with at least 8 characters",
+    )

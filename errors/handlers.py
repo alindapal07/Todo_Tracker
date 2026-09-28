@@ -6,8 +6,10 @@ from errors.exceptions import (
     AppError,
     CategoryAlreadyExists,
     CategoryNotFound,
+    InvalidCurrentPassword,
     TodoAlreadyExists,
     TodoNotFound,
+    TokenInvalidated,
     UserAlreadyExists,
     UserNotFound,
 )
@@ -20,6 +22,8 @@ ERROR_STATUS_CODES: dict[type[AppError], int] = {
     TodoAlreadyExists: status.HTTP_409_CONFLICT,
     CategoryNotFound: status.HTTP_404_NOT_FOUND,
     CategoryAlreadyExists: status.HTTP_409_CONFLICT,
+    TokenInvalidated: status.HTTP_401_UNAUTHORIZED,
+    InvalidCurrentPassword: status.HTTP_400_BAD_REQUEST,
 }
 
 
@@ -76,9 +80,10 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
     )
 
     return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         content=response.model_dump(mode="json"),
     )
+
 
 
 def register_exception_handlers(app: FastAPI):

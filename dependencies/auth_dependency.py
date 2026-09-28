@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
@@ -8,6 +9,7 @@ from fastapi.security import (
 
 from core.security import decode_access_token
 from dependencies.user_dependencies import userServiceDependency
+from errors.exceptions import TokenInvalidated
 from models.user_model import User
 
 
@@ -54,6 +56,24 @@ async def get_current_user(
 
     if hasattr(user, "is_active") and not user.is_active:
         raise authentication_error
+
+    claims = payload
+    password_changed_at = user.password_changed_at
+
+    if password_changed_at is not None:
+        if password_changed_at.tzinfo is None:
+            password_changed_at = password_changed_at.replace(tzinfo=UTC)
+
+        if "iat" not in claims:
+            raise TokenInvalidated()
+
+        token_issued_at = datetime.fromtimestamp(
+            claims["iat"],
+            tz=UTC
+        )
+
+        if token_issued_at <= password_changed_at:
+            raise TokenInvalidated()
 
     return user
 
