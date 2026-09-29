@@ -43,6 +43,13 @@ async def init_db(engine: AsyncEngine) -> None:
             await connection.execute(
                 text('UPDATE todos SET user_id = (SELECT id FROM "user-table" LIMIT 1) WHERE user_id IS NULL;')
             )
+            # add created_at timestamp if table was created previously without it
+            await connection.execute(
+                text('ALTER TABLE todos ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();')
+            )
+            await connection.execute(
+                text('UPDATE todos SET created_at = NOW() WHERE created_at IS NULL;')
+            )
         except Exception as exc:
             logger.warning("todos table column migration note: %s", exc)
 

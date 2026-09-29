@@ -7,6 +7,7 @@ from errors.exceptions import (
     CategoryAlreadyExists,
     CategoryNotFound,
     InvalidCurrentPassword,
+    InvalidExportFormat,
     TodoAlreadyExists,
     TodoNotFound,
     TokenInvalidated,
@@ -24,6 +25,7 @@ ERROR_STATUS_CODES: dict[type[AppError], int] = {
     CategoryAlreadyExists: status.HTTP_409_CONFLICT,
     TokenInvalidated: status.HTTP_401_UNAUTHORIZED,
     InvalidCurrentPassword: status.HTTP_400_BAD_REQUEST,
+    InvalidExportFormat: status.HTTP_400_BAD_REQUEST,
 }
 
 
@@ -89,4 +91,4 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
 def register_exception_handlers(app: FastAPI):
     app.add_exception_handler(AppError, app_error_handler)
     app.add_exception_handler(RequestValidationError, validation_error_handler)
-    app.add_exception_handler(Exception, unexpected_error_handler)
+    app.add_exception_handler(Exception, unexpected_error_handler)

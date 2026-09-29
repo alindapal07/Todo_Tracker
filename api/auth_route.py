@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Cookie, HTTPException, Request, Response, status
+from fastapi import APIRouter, Cookie, HTTPException, Request, Response, status,BackgroundTasks
 
 from core.config import settings
 from core.cookie import clear_refresh_token_cookie, set_refresh_token_cookie
@@ -12,11 +12,10 @@ from schemas.auth_schema import (
     UserRegister,
     UserResponse,
 )
-
+from service.email_service import send_registration_email
 
 from schemas.common_schema import SuccessResponse
 from utils.responses import success_response
-
 
 router = APIRouter(
     prefix="/auth",
@@ -36,12 +35,15 @@ def get_client_ip(request: Request) -> str | None:
     response_model=SuccessResponse[UserResponse],
     status_code=status.HTTP_201_CREATED,
     summary="Register a new user",
+    
 )
 async def register(
     user_data: UserRegister,
     user_service: userServiceDependency,
+    background_task: BackgroundTasks
 ):
     created_user = await user_service.register_user(user_data)
+    background_task.add_task(send_registration_email,email=user_data.email ,name= user_data.name)
     return success_response(
         data=created_user,
         message="User registered successfully",
@@ -60,15 +62,18 @@ async def login(
     user_service: userServiceDependency,
 ):
     try:
+        # grab client ip and browser info
         ip = get_client_ip(request)
         user_agent = request.headers.get("user-agent")
 
+        # authenticate user and create access + refresh tokens
         token_payload, raw_refresh_token = await user_service.login_user(
             login_data=login_data,
             ip=ip,
             user_agent=user_agent,
         )
 
+        # store refresh token in http-only cookie for web browsers
         set_refresh_token_cookie(response, raw_refresh_token)
         return success_response(
             data=Token(**token_payload),
@@ -94,6 +99,7 @@ async def refresh(
     body: RefreshTokenRequest | None = None,
     cookie_token: str | None = Cookie(default=None, alias=settings.REFRESH_COOKIE_NAME),
 ):
+    # read refresh token from json body or fallback to cookie
     raw_refresh_token = (
         (body.refresh_token if body and body.refresh_token else None)
         or cookie_token
@@ -102,6 +108,7 @@ async def refresh(
         or request.cookies.get("refresh-token")
     )
 
+    # if token is not found anywhere, reject with 401
     if not raw_refresh_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -113,11 +120,13 @@ async def refresh(
     user_agent = request.headers.get("user-agent")
 
     try:
+        # validate token, rotate it, and get fresh access token
         token_payload, new_raw_token = await user_service.refresh_token(
             raw_refresh_token=raw_refresh_token,
             ip_address=ip,
             user_agent=user_agent,
         )
+        # update cookie with the newly rotated token
         set_refresh_token_cookie(response, new_raw_token)
         return success_response(
             data=Token(
@@ -128,6 +137,7 @@ async def refresh(
             message="Token refreshed successfully",
         )
     except ValueError as error:
+        # on failure, clear cookie so invalid token isn't reused
         clear_refresh_token_cookie(response)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -197,5 +207,3 @@ async def change_password(
     )
     clear_refresh_token_cookie(response)
     return success_response(message="Password changed successfully")
-
-

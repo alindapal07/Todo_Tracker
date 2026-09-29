@@ -47,6 +47,7 @@ class TodoRepository:
         result = await self.db.execute(statement.order_by(Todo.id))
         return list(result.scalars().all())
 
+    # fetch page of todos with optional status and text search, sorted by created_at
     async def list(
         self,
         *,
@@ -56,21 +57,26 @@ class TodoRepository:
         search: str | None = None,
         page: int = 1,
         limit: int = 10,
-    ) -> tuple[list[Todo], int]:
+        order_by: str = "desc",
+    ) -> tuple[list[Todo], int, bool, bool]:
         filters = []
 
+        # filter by current user
         if user_id is not None:
             filters.append(Todo.user_id == user_id)
 
+        # filter by category
         if category is not None:
             filters.append(Todo.category == category)
 
+        # filter by completed or pending status
         if completed is not None:
             if completed:
                 filters.append(Todo.status == TodoStatus.completed)
             else:
                 filters.append(Todo.status != TodoStatus.completed)
 
+        # search keyword in title or description
         if search:
             pattern = f"%{search.strip().lower()}%"
             filters.append(
@@ -84,22 +90,34 @@ class TodoRepository:
         if filters:
             base = base.where(*filters)
 
-        total = await self.db.scalar(
-            select(func.count()).select_from(base.subquery())
-        )
+        # count total matching rows for pagination
+        total = int(await self.db.scalar(select(func.count()).select_from(base.subquery())) or 0)
 
+        # sort by created_at timestamp in ascending or descending order
+        if str(order_by).strip().lower() == "asc":
+            order_clause = [Todo.created_at.asc(), Todo.id.asc()]
+        else:
+            order_clause = [Todo.created_at.desc(), Todo.id.desc()]
+
+        # apply sorting, offset, and limit to fetch the requested page
         result = await self.db.execute(
-            base.order_by(Todo.id).offset((page - 1) * limit).limit(limit)
+            base.order_by(*order_clause).offset((page - 1) * limit).limit(limit)
         )
 
-        return list(result.scalars().all()), int(total or 0)
+        todos = list(result.scalars().all())
+
+        has_next = page * limit < total
+        has_previous = page > 1 and total > 0
+        return todos, total, has_next, has_previous
 
     async def count_by_category(
         self,
         category: TodoCategory,
         user_id: str | None = None,
     ) -> int:
-        statement = select(func.count()).select_from(Todo).where(Todo.category == category)
+        statement = (
+            select(func.count()).select_from(Todo).where(Todo.category == category)
+        )
         if user_id is not None:
             statement = statement.where(Todo.user_id == user_id)
         total = await self.db.scalar(statement)
@@ -129,3 +147,4 @@ class TodoRepository:
         await self.db.commit()
 
         return int(result.rowcount or 0)
+

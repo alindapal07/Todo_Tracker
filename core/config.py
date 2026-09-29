@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRY_TIME: int = 15
     REFRESH_COOKIE_NAME: str = "refresh_token"
     REFRESH_TOKEN_MAX_AGE: int = 14 * 24 * 60 * 60
+    MAILTRAP_TOKEN:str
 
     @property
     def token_expire_minutes(self) -> int:

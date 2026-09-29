@@ -54,4 +54,9 @@ class TokenInvalidated(AppError):
 class InvalidCurrentPassword(AppError):
     code = "INVALID_CURRENT_PASSWORD"
     message = "Current password is incorrect"
-
+
+
+# raised when user requests an invalid export format like xml or pdf
+class InvalidExportFormat(AppError):
+    code = "INVALID_EXPORT_FORMAT"
+    message = "Unsupported format. Please use 'json' or 'csv'"

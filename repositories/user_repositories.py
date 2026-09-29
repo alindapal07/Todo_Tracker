@@ -20,12 +20,16 @@ class UserRepository:
         return result.scalar_one_or_none()
 
     async def get_user_by_email(self, user_email: str) -> User | None:
-        statement = select(User).where(func.lower(User.email) == user_email.strip().lower())
+        statement = select(User).where(
+            func.lower(User.email) == user_email.strip().lower()
+        )
         result = await self.db.execute(statement)
         return result.scalar_one_or_none()
 
     async def get_user_by_username(self, username: str) -> User | None:
-        statement = select(User).where(func.lower(User.username) == username.strip().lower())
+        statement = select(User).where(
+            func.lower(User.username) == username.strip().lower()
+        )
         result = await self.db.execute(statement)
         return result.scalar_one_or_none()
 
